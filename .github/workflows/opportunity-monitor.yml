@@ -1,0 +1,37 @@
+name: opportunity-monitor
+
+on:
+  schedule:
+    # 每 6 小时跑一次（UTC 23 分错峰）
+    - cron: '23 */6 * * *'
+  workflow_dispatch: {}   # 支持手动触发
+
+permissions:
+  contents: read
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 恢复去重库（避免重复推送）
+        uses: actions/cache@v4
+        with:
+          path: seen.db
+          key: opp-seen-${{ github.run_id }}
+          restore-keys: |
+            opp-seen-
+
+      - name: 运行监控
+        run: python monitor.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

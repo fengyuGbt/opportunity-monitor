@@ -81,18 +81,6 @@ def format_report(fresh, now_str):
     return "\n".join(lines)
 
 
-def load_dotenv():
-    """读取同目录 .env（本地密钥，不入 git），变量仅在该进程内生效。"""
-    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
-    if os.path.exists(env_path):
-        with open(env_path, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    key, _, val = line.partition("=")
-                    os.environ.setdefault(key.strip(), val.strip())
-
-
 def push_wechat(text, hit_count):
     """推送微信（Server酱 Turbo）。title 简短，desp 支持 Markdown。"""
     resp = requests.post(
@@ -144,7 +132,6 @@ def push_github(text):
 
 
 def main():
-    load_dotenv()
     ap = argparse.ArgumentParser(description="海外商业机会监控")
     ap.add_argument("--dry-run", action="store_true", help="只打印结果，不推送")
     args = ap.parse_args()

@@ -3,6 +3,16 @@
 """
 import os
 
+# 先加载同目录 .env（本地密钥，不入 git），后续 os.environ.get 才能读到。
+_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+if os.path.exists(_env_path):
+    with open(_env_path, encoding="utf-8") as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _key, _, _val = _line.partition("=")
+                os.environ.setdefault(_key.strip(), _val.strip())
+
 # 关键词打分表：词 -> 权重。文本命中一个词就加一次权重。
 # 权重建议：越代表"高价值对口需求"的词权重越高（如 xbrl、financial compliance）。
 KEYWORDS = {

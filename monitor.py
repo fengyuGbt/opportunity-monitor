@@ -81,6 +81,34 @@ def format_report(fresh, now_str):
     return "\n".join(lines)
 
 
+def load_dotenv():
+    """读取同目录 .env（本地密钥，不入 git），变量仅在该进程内生效。"""
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if os.path.exists(env_path):
+        with open(env_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, _, val = line.partition("=")
+                    os.environ.setdefault(key.strip(), val.strip())
+
+
+def push_wechat(text, hit_count):
+    """推送微信（Server酱 Turbo）。title 简短，desp 支持 Markdown。"""
+    resp = requests.post(
+        f"https://sctapi.ftqq.com/{config.WECHAT_SENDKEY}.send",
+        data={"title": f"海外机会雷达 · 命中 {hit_count} 条", "desp": text},
+        timeout=20,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    if data.get("code") != 0:
+        print(f"[warn] 微信推送返回异常: {data.get('message')}")
+        return False
+    print("[info] 微信推送成功")
+    return True
+
+
 def get_github_token():
     """GitHub API token：优先环境变量（Actions 自动注入 GITHUB_TOKEN），本地跑从 gh 登录态取。"""
     token = os.environ.get("GITHUB_TOKEN")
@@ -116,6 +144,7 @@ def push_github(text):
 
 
 def main():
+    load_dotenv()
     ap = argparse.ArgumentParser(description="海外商业机会监控")
     ap.add_argument("--dry-run", action="store_true", help="只打印结果，不推送")
     args = ap.parse_args()
@@ -148,6 +177,12 @@ def main():
     if args.dry_run:
         print("\n" + report)
     else:
+        # 微信 = 即时通知（可选）；GitHub 看板 = 归档（必发）
+        if config.WECHAT_SENDKEY:
+            try:
+                push_wechat(report, len(fresh))
+            except Exception as e:  # noqa: BLE001 —— 微信失败不阻断归档
+                print(f"[warn] 微信推送失败: {e}")
         push_github(report)
         for it in fresh:
             mark_seen(conn, it["id"])

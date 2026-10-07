@@ -46,3 +46,8 @@ GITHUB_ISSUE = int(os.environ.get("GITHUB_ISSUE", "1"))  # 固定看板 Issue �
 # GitHub token 获取：GitHub Actions 自动注入 GITHUB_TOKEN；本地跑从 gh 登录态取。
 # 远程 WSL 非登录 shell 的 PATH 可能不含 ~/.local/bin，这里指定 gh 完整路径。
 GH_BIN = os.environ.get("GH_BIN", "/home/erp/.local/bin/gh")
+
+# ---- 微信推送（Server酱）----
+# sct.ftqq.com 微信扫码登录后复制 SendKey（形如 SCTxxx...）。
+# 留空 = 不推微信，只发 GitHub 看板。建议放 .env（不入 git）。
+WECHAT_SENDKEY = os.environ.get("WECHAT_SENDKEY", "")

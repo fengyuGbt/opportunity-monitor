@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  issues: write   # 需要发评论到看板 Issue
 
 jobs:
   monitor:
@@ -33,5 +34,5 @@ jobs:
       - name: 运行监控
         run: python monitor.py
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_REPO: fengyuGbt/opportunity-monitor
+          GITHUB_ISSUE: '1'

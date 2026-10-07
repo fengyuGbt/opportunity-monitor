@@ -1,7 +1,7 @@
 # 海外机会雷达（opportunity-monitor）
 
 零成本、免 API key 的海外商业机会监控系统：定时扫描 4 个免费机会源，按关键词打分，
-把最对口的机会推到 Telegram。跑在远程台式机 WSL（Ubuntu-24.04），可一键迁到 GitHub Actions。
+把最对口的机会发布到仓库固定 Issue 看板（GitHub App / 邮件自动通知）。跑在远程台式机 WSL（Ubuntu-24.04），可一键迁到 GitHub Actions。
 
 ## 数据源（v1）
 
@@ -23,7 +23,7 @@ GitHub Actions 定时(每6h) / WSL cron
         ▼
 sources.py  ──► HN招聘帖 ─┐
                 HN热门帖 ──┤ 统一 dict 列表
-                RemoteOK ──┼──► monitor.py: 打分(关键词权重) ──► SQLite 去重 ──► Telegram Bot
+                RemoteOK ──┼──► monitor.py: 打分(关键词权重) ──► SQLite 去重 ──► GitHub 看板 Issue #1 评论
                 GitHubIssues┘   （score >= MIN_SCORE 才推）      （seen.db）
 ```
 
@@ -37,25 +37,21 @@ venv/bin/pip install -r requirements.txt
 # 先干跑验证（只打印不推送）
 venv/bin/python monitor.py --dry-run
 
-# 配置 Telegram 后正式跑（Token / chat_id 获取见下）
-export TELEGRAM_BOT_TOKEN="123456:ABC-DEF..."
-export TELEGRAM_CHAT_ID="123456789"
-export TELEGRAM_PROXY="http://172.29.224.1:7890"   # 国内跑必填（远程台式机 Clash）；GitHub Actions 不用设
+# 正式跑：把报告发布到仓库看板 Issue #1 评论区
+# 本地跑需要 gh 已登录（gh auth login），token 自动从 gh 登录态获取
 venv/bin/python monitor.py
 ```
 
-**Telegram Bot 配置（一次性）：**
-1. 拿 Token：Telegram 里搜 `@BotFather` → 发 `/newbot` → 按提示给机器人起名 → 返回的 `123456:ABC-DEF...` 就是 Token。
-2. 拿 chat_id：给机器人发一条消息（点它的 Start），然后调：
-   `curl -s "https://api.telegram.org/bot<你的Token>/getUpdates"`，返回 JSON 里 `message.chat.id` 就是要填的 chat_id（想让一群人收，就把 Bot 拉进群，用群的 id，负数）。
-3. 国内网络访问 Telegram 需代理：本地/远程台式机跑时设 `TELEGRAM_PROXY`（远程 Clash 在宿主机 7890 端口，WSL 里宿主机 IP 见 `cat /etc/resolv.conf` 的 nameserver）；GitHub Actions 上不用设。
+**通知机制：** 每次命中新机会，报告以评论形式发到仓库固定 Issue
+（`https://github.com/fengyuGbt/opportunity-monitor/issues/1`）。
+手机装 GitHub App 并关注该仓库，新评论出现时 App / 邮件会推送通知。
 
 ### 本地定时（WSL crontab，不依赖 GitHub）
 
 ```bash
 crontab -e
-# 每 6 小时跑一次，日志留痕（proxy 按需保留）
-23 */6 * * * cd /home/erp/opportunity-monitor && TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID=$TELEGRAM_CHAT_ID TELEGRAM_PROXY=http://172.29.224.1:7890 venv/bin/python monitor.py >> run.log 2>&1
+# 每 6 小时跑一次，日志留痕
+23 */6 * * * cd /home/erp/opportunity-monitor && venv/bin/python monitor.py >> run.log 2>&1
 ```
 
 ## GitHub Actions 部署（推荐）
@@ -64,10 +60,8 @@ crontab -e
    ```bash
    gh repo create opportunity-monitor --public --source /home/erp/opportunity-monitor --push
    ```
-2. 仓库 Settings → Secrets and variables → Actions → New repository secret，新增两个：
-   - `TELEGRAM_BOT_TOKEN`：Bot Token
-   - `TELEGRAM_CHAT_ID`：chat_id
-   （GitHub 服务器能直连 Telegram，无需代理 secret。）
+2. 无需配置 secret：工作流已声明 `issues: write` 权限，Actions 内置的 GITHUB_TOKEN 会自动把报告发到看板 Issue 评论区。
+   （注：GITHUB_TOKEN 是仓库内自动注入的，fork 或迁移到其他仓库时会在原仓库 issue 上失效，届时按需调整 `GITHUB_REPO`。）
 3. 手动触发验证：Actions → opportunity-monitor → Run workflow。
    之后每 6 小时自动跑；`seen.db` 通过 Actions cache 跨任务保留，不会重复推送。
 

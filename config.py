@@ -38,13 +38,11 @@ ENABLE_GITHUB = False      # GitHub Issues：默认关（多为技术讨论噪�
 # GitHub Issues 搜索查询（若开启 ENABLE_GITHUB，建议聚焦"机会信号"词，如加 freelance / help wanted）
 GITHUB_QUERY = 'odoo OR xbrl OR "financial compliance" is:issue'
 
-# ---- Telegram 推送 ----
-# 创建 Bot：Telegram 里找 @BotFather，发 /newbot，按提示起名，会得到 token（形如 123456:ABC-DEF...）
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+# ---- GitHub 看板推送 ----
+# 每次命中新机会时，发一条评论到仓库的固定 Issue（GitHub App / 邮件会收到通知）
+GITHUB_REPO = os.environ.get("GITHUB_REPO", "fengyuGbt/opportunity-monitor")
+GITHUB_ISSUE = int(os.environ.get("GITHUB_ISSUE", "1"))  # 固定看板 Issue 编号
 
-# 接收消息的 chat_id：把 Bot 拉进对话后调 getUpdates 拿（整数或 -100xxxxxxxxxx 群ID）
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
-
-# Telegram 在国内需走代理。远程台式机 Clash 监听宿主机 7890，WSL 里访问宿主机 IP。
-# 留空 = 不代理（GitHub Actions 上直连即可）。
-TELEGRAM_PROXY = os.environ.get("TELEGRAM_PROXY", "")
+# GitHub token 获取：GitHub Actions 自动注入 GITHUB_TOKEN；本地跑从 gh 登录态取。
+# 远程 WSL 非登录 shell 的 PATH 可能不含 ~/.local/bin，这里指定 gh 完整路径。
+GH_BIN = os.environ.get("GH_BIN", "/home/erp/.local/bin/gh")

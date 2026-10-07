@@ -7,7 +7,9 @@
     python monitor.py --dry-run  # 只打印结果不推送，建议先跑这个验证
 """
 import argparse
+import os
 import sqlite3
+import subprocess
 import sys
 import time
 from datetime import datetime
@@ -79,24 +81,38 @@ def format_report(fresh, now_str):
     return "\n".join(lines)
 
 
-def push_telegram(text):
-    """推送消息到 Telegram（可走代理）。"""
-    if not (config.TELEGRAM_BOT_TOKEN and config.TELEGRAM_CHAT_ID):
-        print("[error] 未配置 TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID（环境变量或 config.py）")
+def get_github_token():
+    """GitHub API token：优先环境变量（Actions 自动注入 GITHUB_TOKEN），本地跑从 gh 登录态取。"""
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        return token
+    try:
+        out = subprocess.run([config.GH_BIN, "auth", "token"], capture_output=True, text=True, timeout=15)
+        if out.returncode == 0 and out.stdout.strip():
+            return out.stdout.strip()
+    except Exception:  # noqa: BLE001
+        pass
+    return ""
+
+
+def push_github(text):
+    """把报告发到仓库固定 Issue 的评论区（新评论触发 GitHub App / 邮件通知）。"""
+    token = get_github_token()
+    if not token:
+        print("[error] 未找到 GitHub token：GitHub Actions 会自动注入；本地跑请先 gh auth login")
         sys.exit(1)
-    proxies = None
-    if config.TELEGRAM_PROXY:
-        proxies = {"http": config.TELEGRAM_PROXY, "https": config.TELEGRAM_PROXY}
-    # Telegram 单条消息上限 4096 字符，截断保底
-    payload = text[:3800]
     resp = requests.post(
-        f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendMessage",
-        json={"chat_id": config.TELEGRAM_CHAT_ID, "text": payload, "disable_web_page_preview": False},
-        proxies=proxies,
+        f"https://api.github.com/repos/{config.GITHUB_REPO}/issues/{config.GITHUB_ISSUE}/comments",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "opportunity-monitor",
+        },
+        json={"body": text[:65000]},  # 单条评论上限 65536 字符，截断保底
         timeout=20,
     )
     resp.raise_for_status()
-    print("[info] Telegram 推送成功")
+    print("[info] GitHub 看板评论发布成功")
 
 
 def main():
@@ -132,7 +148,7 @@ def main():
     if args.dry_run:
         print("\n" + report)
     else:
-        push_telegram(report)
+        push_github(report)
         for it in fresh:
             mark_seen(conn, it["id"])
         conn.commit()

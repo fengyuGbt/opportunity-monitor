@@ -1,4 +1,5 @@
 seen.db
+run.log
 __pycache__/
 *.pyc
 .venv/

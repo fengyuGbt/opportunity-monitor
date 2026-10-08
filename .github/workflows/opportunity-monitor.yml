@@ -36,3 +36,7 @@ jobs:
         env:
           GITHUB_REPO: fengyuGbt/opportunity-monitor
           GITHUB_ISSUE: '1'
+          # GitHub 2025 起不再自动注入 GITHUB_TOKEN，需显式传入
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 微信 SendKey（已在仓库 Secrets 中配置，不经 git）
+          WECHAT_SENDKEY: ${{ secrets.WECHAT_SENDKEY }}

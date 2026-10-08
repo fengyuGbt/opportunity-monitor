@@ -56,6 +56,7 @@ def collect(since_ts, keywords):
         ("ENABLE_HN_HIRING", sources.fetch_hn_hiring, (since_ts,)),
         ("ENABLE_REMOTEOK", sources.fetch_remoteok, (since_ts,)),
         ("ENABLE_GITHUB", sources.fetch_github, (since_ts,)),
+        ("ENABLE_REDDIT", sources.fetch_reddit, (since_ts,)),
     ]
     for flag, fn, args in fetchers:
         if not getattr(config, flag, False):

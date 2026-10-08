@@ -10,7 +10,9 @@
 
 新增来源 = 新增一个这样的函数，然后在 monitor.py 的 collect() 里注册一行。
 """
+import re
 import time
+import xml.etree.ElementTree as ET
 from datetime import datetime
 
 import requests
@@ -134,6 +136,57 @@ def fetch_remoteok(since_ts):
             "date": ts,
             "source": "RemoteOK",
         })
+    return out
+
+
+def fetch_reddit(since_ts):
+    """Reddit：抓指定 subreddit 的接单/需求帖（Atom RSS，免登录、无需 API key）。
+    主要价值：r/forhire 每天 ~30 条新帖，[Hiring] 帖 = 直接的需求方。
+    Reddit 国内不可直连，默认走 WSL 内的台式机 Clash 代理。
+    """
+    out = []
+    for sub in config.REDDIT_SUBREDDITS:
+        try:
+            resp = requests.get(
+                f"https://www.reddit.com/r/{sub}/new/.rss?limit=50",
+                headers=HEADERS,
+                proxies={"http": config.REDDIT_PROXY, "https": config.REDDIT_PROXY},
+                timeout=30,
+            )
+            resp.raise_for_status()
+        except Exception as e:  # noqa: BLE001 —— 单个 subreddit 失败不影响其他源
+            print(f"[warn] Reddit r/{sub} 抓取失败: {e}")
+            continue
+
+        root = ET.fromstring(resp.text)
+        ns = {"a": "http://www.w3.org/2005/Atom"}
+        for entry in root.findall("a:entry", ns):
+            rid = (entry.findtext("a:id", "", ns) or "").strip()
+            if not rid:
+                continue
+            ts = _iso_to_ts(entry.findtext("a:updated", "", ns) or "")
+            if ts < since_ts:
+                continue
+            title = (entry.findtext("a:title", "", ns) or "").strip()
+            # 只留 [Hiring]（需求方找人=机会）；跳过 [For Hire]（求职者自我推销=噪音/竞争对手）
+            if "for hire" in title.lower():
+                continue
+            link = ""
+            for ln in entry.findall("a:link", ns):
+                if ln.get("rel", "alternate") == "alternate":
+                    link = ln.get("href", "") or ""
+                    break
+            raw = entry.findtext("a:content", "", ns) or ""
+            body = re.sub(r"<[^>]+>", " ", raw)          # 去 HTML 标签
+            body = " ".join(body.split())[:600]           # 折叠空白
+            out.append({
+                "id": f"rd-{rid}",
+                "title": f"[Reddit/{sub}] {title}",
+                "url": link,
+                "text": f"{title}\n{body}",
+                "date": ts,
+                "source": "Reddit",
+            })
     return out
 
 

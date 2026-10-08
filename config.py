@@ -44,6 +44,13 @@ ENABLE_HN_STORIES = True   # HN 关键词相关热门帖
 ENABLE_HN_HIRING = True    # HN "Who is hiring" 月度招聘帖评论
 ENABLE_REMOTEOK = True     # RemoteOK 全球远程职位
 ENABLE_GITHUB = False      # GitHub Issues：默认关（多为技术讨论噪音，需要时开启并聚焦 GITHUB_QUERY）
+ENABLE_REDDIT = True       # Reddit 接单/需求帖（r/forhire 等，每天几十条新帖）
+
+# ---- Reddit 源 ----
+# subreddit 列表：加你想盯的板块。r/forhire 是最大接单市场；r/WorkOnline 远程工作讨论。
+REDDIT_SUBREDDITS = ["forhire"]
+# Reddit 国内不可直连，默认走 WSL 内的台式机 Clash 代理；笔记本调试时可用环境变量覆盖
+REDDIT_PROXY = os.environ.get("REDDIT_PROXY", "http://172.29.224.1:7890")
 
 # GitHub Issues 搜索查询（若开启 ENABLE_GITHUB，建议聚焦"机会信号"词，如加 freelance / help wanted）
 GITHUB_QUERY = 'odoo OR xbrl OR "financial compliance" is:issue'
